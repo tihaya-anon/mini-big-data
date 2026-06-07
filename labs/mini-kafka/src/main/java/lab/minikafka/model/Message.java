@@ -1,4 +1,4 @@
-package lab.minikafka;
+package lab.minikafka.model;
 
 import java.util.Arrays;
 import java.util.Objects;

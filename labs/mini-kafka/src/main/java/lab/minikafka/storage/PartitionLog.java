@@ -1,7 +1,10 @@
-package lab.minikafka;
+package lab.minikafka.storage;
 
+import lab.minikafka.model.Message;
 import java.util.ArrayList;
 import java.util.List;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * One append-only log for a single topic-partition.
@@ -11,11 +14,14 @@ import java.util.List;
  */
 public final class PartitionLog {
 
+    private static final Logger LOG = LoggerFactory.getLogger(PartitionLog.class);
+
     private final List<Message> messages = new ArrayList<>();
 
     public synchronized long append(byte[] key, byte[] value) {
         long offset = messages.size();
         messages.add(new Message(offset, key, value));
+        LOG.debug("Partition log append completed at offset {}", offset);
         return offset;
     }
 
@@ -38,6 +44,7 @@ public final class PartitionLog {
 
         int start = Math.toIntExact(offset);
         int end = Math.min(messages.size(), start + maxMessages);
+        LOG.debug("Partition log read returning records in range [{}:{})", start, end);
         return List.copyOf(messages.subList(start, end));
     }
 

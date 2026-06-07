@@ -1,4 +1,4 @@
-package lab.minikafka;
+package lab.minikafka.broker;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -6,13 +6,23 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import lab.minikafka.api.FetchResult;
+import lab.minikafka.api.MiniKafkaBroker;
+import lab.minikafka.model.Message;
 import org.junit.jupiter.api.Test;
 
 class InMemoryKafkaBrokerTest {
 
+    static {
+        System.setProperty("org.slf4j.simpleLogger.defaultLogLevel", "debug");
+        System.setProperty("org.slf4j.simpleLogger.showThreadName", "false");
+        System.setProperty("org.slf4j.simpleLogger.showShortLogName", "true");
+        System.setProperty("org.slf4j.simpleLogger.showDateTime", "false");
+    }
+
     @Test
     void appendAssignsSequentialOffsetsPerPartition() {
-        InMemoryKafkaBroker broker = new InMemoryKafkaBroker();
+        MiniKafkaBroker broker = new InMemoryKafkaBroker();
         broker.createTopic("orders", 2);
 
         long firstOffset = broker.append("orders", 0, bytes("order-1"), bytes("created"));
@@ -27,7 +37,7 @@ class InMemoryKafkaBrokerTest {
 
     @Test
     void fetchReadsFromOffsetAndReturnsNextOffset() {
-        InMemoryKafkaBroker broker = new InMemoryKafkaBroker();
+        MiniKafkaBroker broker = new InMemoryKafkaBroker();
         broker.createTopic("orders", 1);
         broker.append("orders", 0, bytes("order-1"), bytes("created"));
         broker.append("orders", 0, bytes("order-2"), bytes("paid"));
@@ -46,7 +56,7 @@ class InMemoryKafkaBrokerTest {
 
     @Test
     void committedOffsetsAreTrackedPerConsumerGroup() {
-        InMemoryKafkaBroker broker = new InMemoryKafkaBroker();
+        MiniKafkaBroker broker = new InMemoryKafkaBroker();
         broker.createTopic("orders", 1);
         broker.append("orders", 0, bytes("order-1"), bytes("created"));
         broker.append("orders", 0, bytes("order-2"), bytes("paid"));
@@ -62,7 +72,7 @@ class InMemoryKafkaBrokerTest {
 
     @Test
     void unknownTopicPartitionFailsFast() {
-        InMemoryKafkaBroker broker = new InMemoryKafkaBroker();
+        MiniKafkaBroker broker = new InMemoryKafkaBroker();
 
         IllegalArgumentException error = assertThrows(
             IllegalArgumentException.class,

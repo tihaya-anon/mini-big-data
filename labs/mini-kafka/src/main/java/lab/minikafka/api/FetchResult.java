@@ -1,5 +1,6 @@
-package lab.minikafka;
+package lab.minikafka.api;
 
+import lab.minikafka.model.Message;
 import java.util.List;
 
 /**
