@@ -13,6 +13,8 @@ Each lab lives under `labs/<lab-name>/` and follows the same layout:
 
 Use `templates/lab/` when creating a new lab or extending an existing one.
 
+Repository-level build config lives in `.mvn/`. Maven artifacts are cached in the repository-local `.m2/` directory instead of `~/.m2/`.
+
 Language rules are fixed at the repository level:
 
 - all labs use JVM languages except `labs/mini-terraform/`
@@ -31,6 +33,8 @@ There is no global root build yet. Work at the lab level and use the stack requi
 - `cd labs/mini-kafka && mvn test`: run tests for a JVM-based lab
 - `cd labs/mini-lsm-kv-store && mvn package`: build a JVM-based lab
 - `cd labs/mini-terraform && go test ./...`: run tests for the Go lab
+
+JVM labs should rely on the repository root `.mvn/maven.config`, which sets `-Dmaven.repo.local=.m2/repository`. Do not switch Maven back to `~/.m2`, and do not commit `.m2/` or `target/`.
 
 When a lab adds runnable code, document its local commands in that lab’s `README.md`.
 

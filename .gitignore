@@ -1,0 +1,4 @@
+.m2/
+target/
+*/target/
+labs/*/target/
