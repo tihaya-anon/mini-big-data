@@ -2,7 +2,6 @@ package lab.minikafka.broker;
 
 import lab.minikafka.model.TopicPartition;
 import lab.minikafka.storage.InMemoryPartitionLog;
-import lab.minikafka.storage.PartitionLogStore;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -19,17 +18,11 @@ public final class InMemoryKafkaBroker extends AbstractSingleNodeKafkaBroker {
 
     @Override
     public void createTopic(String topic, int partitions) {
-        if (partitions <= 0) {
-            throw new IllegalArgumentException("partitions must be > 0");
-        }
+        validatePartitionCount(partitions);
         LOG.info("Creating topic '{}' with {} partitions", topic, partitions);
         for (int partition = 0; partition < partitions; partition++) {
             TopicPartition topicPartition = new TopicPartition(topic, partition);
-            ensureTopicPartitionAvailable(topicPartition);
-            PartitionLogStore previous = logs().putIfAbsent(topicPartition, new InMemoryPartitionLog());
-            if (previous != null) {
-                throw new IllegalArgumentException("topic partition already exists: " + topicPartition);
-            }
+            registerLog(topicPartition, new InMemoryPartitionLog());
             LOG.debug("Created partition log for {}", topicPartition);
         }
     }

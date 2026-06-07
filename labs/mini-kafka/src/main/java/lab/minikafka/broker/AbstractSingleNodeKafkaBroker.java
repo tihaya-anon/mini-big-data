@@ -22,6 +22,12 @@ abstract class AbstractSingleNodeKafkaBroker implements MiniKafkaBroker {
     private final Map<TopicPartition, PartitionLogStore> logs = new ConcurrentHashMap<>();
     private final Map<String, Map<TopicPartition, Long>> groupOffsets = new ConcurrentHashMap<>();
 
+    protected final void validatePartitionCount(int partitions) {
+        if (partitions <= 0) {
+            throw new IllegalArgumentException("partitions must be > 0");
+        }
+    }
+
     @Override
     public final long append(String topic, int partition, byte[] key, byte[] value) {
         TopicPartition topicPartition = new TopicPartition(topic, partition);
@@ -99,6 +105,14 @@ abstract class AbstractSingleNodeKafkaBroker implements MiniKafkaBroker {
 
     protected final void ensureTopicPartitionAvailable(TopicPartition topicPartition) {
         if (logs.containsKey(topicPartition)) {
+            throw new IllegalArgumentException("topic partition already exists in broker: " + topicPartition);
+        }
+    }
+
+    protected final void registerLog(TopicPartition topicPartition, PartitionLogStore logStore) {
+        ensureTopicPartitionAvailable(topicPartition);
+        PartitionLogStore previous = logs.putIfAbsent(topicPartition, logStore);
+        if (previous != null) {
             throw new IllegalArgumentException("topic partition already exists in broker: " + topicPartition);
         }
     }
