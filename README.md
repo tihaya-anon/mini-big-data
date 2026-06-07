@@ -35,4 +35,4 @@ The goal is not to rebuild full production systems. Each lab isolates one system
 | `mini-iceberg` | Snapshots, manifests, metadata, schema evolution, time travel |
 | `mini-terraform` | Config parsing, graph building, diff/plan/apply, provider interface |
 
-See [docs/mini-big-data-labs.md](/home/labuser/proj/mini_big_data/docs/mini-big-data-labs.md) for the roadmap and scope of each lab.
+See [docs/mini-big-data-labs.md](docs/mini-big-data-labs.md) for the roadmap and scope of each lab.

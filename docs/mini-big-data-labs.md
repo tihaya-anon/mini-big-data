@@ -62,4 +62,4 @@ Each lab should eventually include:
 
 ## Next step
 
-Use the template in [templates/lab/README.md](/home/labuser/proj/mini_big_data/templates/lab/README.md) when you start filling in an individual lab.
+Use the template in [templates/lab/README.md](../templates/lab/README.md) when you start filling in an individual lab.
