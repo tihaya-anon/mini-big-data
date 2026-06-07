@@ -3,6 +3,12 @@ package lab.minikafka;
 import java.util.Arrays;
 import java.util.Objects;
 
+/**
+ * Minimal record stored inside a partition log.
+ *
+ * <p>The most important field here is the offset. It represents the record's position in one
+ * partition and is the basis for ordered reads and recovery.
+ */
 public final class Message {
 
     private final long offset;

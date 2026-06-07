@@ -2,6 +2,12 @@ package lab.minikafka;
 
 import java.util.List;
 
+/**
+ * Result of reading from a partition log.
+ *
+ * <p>The next offset is returned explicitly because Kafka consumers typically feed that value into
+ * the next fetch or into offset commit logic.
+ */
 public final class FetchResult {
 
     private final List<Message> messages;
