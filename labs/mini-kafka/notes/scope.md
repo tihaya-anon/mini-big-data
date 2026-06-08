@@ -18,10 +18,11 @@ Implement a single-node version before adding replication or leader election.
 - track committed offsets per consumer group
 - persist partition logs to disk
 - recover partition end offsets after restart
+- roll to new segment files as the log grows
 
 ## Out of scope now
 
-- segmented storage and index files
+- per-segment index files
 - replication and leader failover
 - consumer group rebalance
 - socket protocol or HTTP API
@@ -33,7 +34,14 @@ Implement a single-node version before adding replication or leader election.
 - Offsets are positions in the log, not arbitrary message IDs.
 - Consumer progress is separate from message storage.
 - Persistence changes implementation details, but not the append/fetch contract.
+- Segments make an ever-growing log operationally manageable.
 
 ## Next milestone
 
-Move from a single file-backed log to segmented storage while keeping the same append and fetch contract.
+Add per-segment indexes so fetch no longer depends on scanning segment files sequentially.
+
+The immediate follow-up should include:
+
+- an index file per segment
+- clearer active versus closed segment roles
+- tail recovery rules for incomplete writes

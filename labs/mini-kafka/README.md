@@ -39,6 +39,19 @@ An offset is not a random ID. It is the position of a message in that partition'
 - what has already been processed
 - where to resume after a restart
 
+### Segment
+
+A segment is one chunk of a partition log on disk.
+
+Real Kafka does not keep one partition forever in one giant file. Instead, it splits the log into multiple ordered files called segments. New writes go to the active segment, and once that segment grows large enough, Kafka rolls to a new one.
+
+Segmentation solves several practical problems:
+
+- recovery is easier because the broker only needs to inspect bounded files
+- retention and deletion are easier because old segments can be removed as units
+- indexes stay manageable because they are typically built per segment
+- one endlessly growing file is harder to operate than many ordered chunks
+
 ### Consumer group
 
 Multiple consumers can share one group ID. Conceptually, the group is cooperating to consume a topic together, and the group stores its progress as committed offsets.
@@ -59,7 +72,7 @@ This lab strips Kafka down to the minimum ideas that matter first:
 This lab currently implements two single-node broker variants:
 
 - an in-memory broker for learning the pure data model first
-- a file-backed broker for learning persistence and restart behavior
+- a segmented file-backed broker for learning persistence and restart behavior
 
 Across those two variants, the lab now covers:
 
@@ -67,10 +80,11 @@ Across those two variants, the lab now covers:
 - append that returns a monotonically increasing partition offset
 - fetch from an offset with a max message count
 - consumer group offset commit and lookup
-- file-backed append-only partition logs
+- segmented file-backed append-only partition logs
 - restart recovery of partition end offsets
+- rollover from one segment file to the next
 
-Replication, leader election, rebalancing, segmented storage, retention, and network protocols are still out of scope for this phase.
+Replication, leader election, rebalancing, retention policies, index files, and network protocols are still out of scope for this phase.
 
 ## Mapping this lab to real Kafka
 
@@ -79,13 +93,13 @@ Replication, leader election, rebalancing, segmented storage, retention, and net
 | broker | `InMemoryKafkaBroker`, `FileBackedKafkaBroker` |
 | topic-partition log abstraction | `PartitionLogStore` |
 | in-memory log | `InMemoryPartitionLog` |
-| file-backed log | `FilePartitionLog` |
+| segmented file-backed log | `FilePartitionLog` |
 | record with offset | `Message` |
 | fetch response | `FetchResult` |
 | shared single-node broker flow | `AbstractSingleNodeKafkaBroker` |
 | committed group offset | `groupOffsets` map inside the abstract broker |
 
-This lab now has both a pure in-memory model and a minimal persistent model. Real Kafka still goes further by adding segmented logs, indexes, replication, leader election, retention, compaction, network protocols, and consumer group coordination.
+This lab now has both a pure in-memory model and a minimal persistent segmented model. Real Kafka still goes further by adding indexes, replication, leader election, retention, compaction, network protocols, and consumer group coordination.
 
 ## How to read this lab
 
@@ -94,10 +108,10 @@ If you are new to Kafka, read in this order:
 1. `README.md`: understand the system model
 2. `notes/scope.md`: understand what this phase includes and excludes
 3. `src/main/java/lab/minikafka/storage/InMemoryPartitionLog.java`: see the append-only log in its simplest form
-4. `src/main/java/lab/minikafka/storage/FilePartitionLog.java`: see how persistence changes the design
+4. `src/main/java/lab/minikafka/storage/FilePartitionLog.java`: see how persistence and segmentation change the design
 5. `src/main/java/lab/minikafka/broker/AbstractSingleNodeKafkaBroker.java`: see the shared broker flow
 6. `src/test/java/lab/minikafka/broker/InMemoryKafkaBrokerTest.java`: see the memory behavior
-7. `src/test/java/lab/minikafka/broker/FileBackedKafkaBrokerTest.java`: see restart and persistence behavior
+7. `src/test/java/lab/minikafka/broker/FileBackedKafkaBrokerTest.java`: see restart, rollover, and segmented reads
 
 ## Structure
 
@@ -120,4 +134,12 @@ mini-kafka/
 
 ## What comes next
 
-The next milestone should move from a single log file per partition to segmented storage with explicit segment boundaries and, later, indexes. That is the point where this lab starts to resemble Kafka's real on-disk log design much more closely.
+The next milestone should add per-segment indexes and more explicit recovery behavior.
+
+Concretely, the next step should do three things:
+
+1. add a small index per segment so fetch does not need to scan every record sequentially
+2. separate active-segment writes from read-only closed segments more explicitly
+3. define recovery rules for partially written tail records
+
+That is the point where reads stop being "scan files in order" and start to resemble Kafka's real on-disk log design more closely.

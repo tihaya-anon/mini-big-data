@@ -2,13 +2,16 @@ package lab.minikafka.broker;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import lab.minikafka.api.FetchResult;
 import lab.minikafka.api.MiniKafkaBroker;
 import lab.minikafka.model.Message;
+import lab.minikafka.storage.FilePartitionLog;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -62,6 +65,26 @@ class FileBackedKafkaBrokerTest {
         assertEquals(2, result.messages().size());
         assertEquals(1L, result.messages().get(1).offset());
         assertArrayEquals(bytes("order-2"), result.messages().get(1).key());
+    }
+
+    @Test
+    void segmentedLogReadsAcrossMultipleSegments() throws Exception {
+        Path partitionDirectory = tempDir.resolve("orders").resolve("partition-0");
+        FilePartitionLog log = new FilePartitionLog(partitionDirectory, 2);
+
+        assertEquals(0L, log.append(bytes("order-1"), bytes("created")));
+        assertEquals(1L, log.append(bytes("order-2"), bytes("paid")));
+        assertEquals(2L, log.append(bytes("order-3"), bytes("shipped")));
+        assertEquals(3L, log.append(bytes("order-4"), bytes("delivered")));
+
+        List<Path> segmentFiles = Files.list(partitionDirectory).sorted().toList();
+        List<Message> messages = log.readFrom(1, 10);
+
+        assertTrue(segmentFiles.size() >= 2);
+        assertEquals(3, messages.size());
+        assertEquals(1L, messages.get(0).offset());
+        assertEquals(3L, messages.get(2).offset());
+        assertArrayEquals(bytes("order-4"), messages.get(2).key());
     }
 
     private static byte[] bytes(String value) {
