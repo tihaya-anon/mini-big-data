@@ -76,7 +76,10 @@ class FileBackedKafkaBrokerTest {
     assertEquals(2L, log.append(bytes("order-3"), bytes("shipped")));
     assertEquals(3L, log.append(bytes("order-4"), bytes("delivered")));
 
-    List<Path> segmentFiles = Files.list(partitionDirectory).sorted().toList();
+    List<Path> segmentFiles;
+    try (var stream = Files.list(partitionDirectory)) {
+      segmentFiles = stream.sorted().toList();
+    }
     List<Message> messages = log.readFrom(1, 10);
 
     assertTrue(segmentFiles.size() >= 2);

@@ -1,7 +1,6 @@
 package lab.minikafka.model;
 
 import java.util.Arrays;
-import java.util.Objects;
 
 /**
  * Minimal record stored inside a partition log.
@@ -9,49 +8,41 @@ import java.util.Objects;
  * <p>The most important field here is the offset. It represents the record's position in one
  * partition and is the basis for ordered reads and recovery.
  */
-public final class Message {
+public record Message(long offset, byte[] key, byte[] value) {
 
-  private final long offset;
-  private final byte[] key;
-  private final byte[] value;
-
-  public Message(long offset, byte[] key, byte[] value) {
-    this.offset = offset;
-    this.key = key == null ? null : Arrays.copyOf(key, key.length);
-    this.value = value == null ? null : Arrays.copyOf(value, value.length);
+  public Message {
+    key = copy(key);
+    value = copy(value);
   }
 
-  public long offset() {
-    return offset;
-  }
-
+  @Override
   public byte[] key() {
-    return key == null ? null : Arrays.copyOf(key, key.length);
+    return copy(key);
   }
 
+  @Override
   public byte[] value() {
-    return value == null ? null : Arrays.copyOf(value, value.length);
+    return copy(value);
   }
 
   @Override
   public boolean equals(Object other) {
-    if (this == other) {
-      return true;
-    }
-    if (!(other instanceof Message)) {
-      return false;
-    }
-    Message that = (Message) other;
-    return offset == that.offset
-        && Arrays.equals(key, that.key)
-        && Arrays.equals(value, that.value);
+    return this == other
+        || other instanceof Message that
+            && offset == that.offset
+            && Arrays.equals(key, that.key)
+            && Arrays.equals(value, that.value);
   }
 
   @Override
   public int hashCode() {
-    int result = Objects.hash(offset);
+    int result = Long.hashCode(offset);
     result = 31 * result + Arrays.hashCode(key);
     result = 31 * result + Arrays.hashCode(value);
     return result;
+  }
+
+  private static byte[] copy(byte[] bytes) {
+    return bytes == null ? null : Arrays.copyOf(bytes, bytes.length);
   }
 }

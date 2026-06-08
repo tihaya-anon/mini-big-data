@@ -48,7 +48,7 @@ public final class FilePartitionLog implements PartitionLogStore {
     this.maxRecordsPerSegment = maxRecordsPerSegment;
     Files.createDirectories(partitionDirectory);
     this.segments = loadSegments();
-    this.nextOffset = segments.isEmpty() ? 0 : segments.get(segments.size() - 1).nextOffset();
+    this.nextOffset = segments.isEmpty() ? 0 : segments.getLast().nextOffset();
 
     if (segments.isEmpty()) {
       segments.add(createSegment(0));
@@ -110,7 +110,7 @@ public final class FilePartitionLog implements PartitionLogStore {
   }
 
   private LogSegment activeSegment() {
-    return segments.get(segments.size() - 1);
+    return segments.getLast();
   }
 
   private LogSegment rollSegment() throws IOException {
