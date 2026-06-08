@@ -20,6 +20,11 @@ public final class InMemoryKafkaBroker extends AbstractSingleNodeKafkaBroker {
   public void createTopic(String topic, int partitions) {
     validatePartitionCount(partitions);
     LOG.info("Creating topic '{}' with {} partitions", topic, partitions);
+
+    /*
+     * Creating a topic means registering one independent log per partition. The in-memory broker
+     * uses one ArrayList-backed log for each partition.
+     */
     for (int partition = 0; partition < partitions; partition++) {
       TopicPartition topicPartition = new TopicPartition(topic, partition);
       registerLog(topicPartition, new InMemoryPartitionLog());

@@ -11,22 +11,29 @@ import java.util.Arrays;
 public record Message(long offset, byte[] key, byte[] value) {
 
   public Message {
+    /*
+     * byte[] is mutable, so a plain record would otherwise expose internal state. Copying at
+     * construction makes a Message behave like an immutable value object.
+     */
     key = copy(key);
     value = copy(value);
   }
 
   @Override
   public byte[] key() {
+    // Return a copy for the same reason: callers should not be able to mutate this record.
     return copy(key);
   }
 
   @Override
   public byte[] value() {
+    // A null value is allowed; it represents an absent payload, not an empty byte array.
     return copy(value);
   }
 
   @Override
   public boolean equals(Object other) {
+    // Records do not compare arrays by content automatically, so equality must handle them itself.
     return this == other
         || other instanceof Message that
             && offset == that.offset
@@ -36,6 +43,7 @@ public record Message(long offset, byte[] key, byte[] value) {
 
   @Override
   public int hashCode() {
+    // Keep hashCode consistent with the array-content equality above.
     int result = Long.hashCode(offset);
     result = 31 * result + Arrays.hashCode(key);
     result = 31 * result + Arrays.hashCode(value);

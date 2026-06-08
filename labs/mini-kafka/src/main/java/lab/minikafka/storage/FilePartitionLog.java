@@ -46,7 +46,17 @@ public final class FilePartitionLog implements PartitionLogStore {
 
   private final Path partitionDirectory;
   private final int maxRecordsPerSegment;
+
+  /*
+   * Segment order is the partition order. The last segment is the only segment append writes to;
+   * earlier segments are read-only in this milestone.
+   */
   private final List<LogSegment> segments;
+
+  /*
+   * nextOffset is kept at the outer partition level because offsets are global within a partition,
+   * not local to individual segment files.
+   */
   private long nextOffset;
 
   public FilePartitionLog(Path partitionDirectory) throws IOException {
@@ -72,10 +82,15 @@ public final class FilePartitionLog implements PartitionLogStore {
     }
     this.partitionDirectory = partitionDirectory;
     this.maxRecordsPerSegment = maxRecordsPerSegment;
+
+    // The directory layout mirrors Kafka's topic/partition storage boundary.
     Files.createDirectories(partitionDirectory);
+
+    // Existing segment files are the source of truth during startup recovery.
     this.segments = loadSegments();
     this.nextOffset = segments.isEmpty() ? 0 : segments.getLast().nextOffset();
 
+    // A new empty partition still needs one active segment ready for appends.
     if (segments.isEmpty()) {
       segments.add(createSegment(0));
     }
@@ -90,10 +105,16 @@ public final class FilePartitionLog implements PartitionLogStore {
   @Override
   public synchronized long append(byte[] key, byte[] value) throws IOException {
     LogSegment activeSegment = activeSegment();
+
+    // Rollover happens before writing so every segment stays within the configured record limit.
     if (activeSegment.recordCount() >= maxRecordsPerSegment) {
       activeSegment = rollSegment();
     }
 
+    /*
+     * Capture the current partition end as the assigned offset, append bytes to disk, then advance
+     * the end offset. The file does not store this offset explicitly.
+     */
     long offset = nextOffset;
     activeSegment.append(key, value);
     nextOffset++;
@@ -107,6 +128,8 @@ public final class FilePartitionLog implements PartitionLogStore {
   @Override
   public synchronized List<Message> readFrom(long offset, int maxMessages) throws IOException {
     InMemoryPartitionLog.validateReadArguments(offset, maxMessages);
+
+    // An offset equal to the partition end is a valid empty fetch.
     if (offset >= nextOffset) {
       return List.of();
     }
@@ -141,10 +164,12 @@ public final class FilePartitionLog implements PartitionLogStore {
   }
 
   private LogSegment activeSegment() {
+    // The active segment is always the newest segment in sorted segment order.
     return segments.getLast();
   }
 
   private LogSegment rollSegment() throws IOException {
+    // The new file name starts at the next partition offset, which becomes the segment base offset.
     LogSegment segment = createSegment(nextOffset);
     segments.add(segment);
     LOG.info("Rolled new segment {} at base offset {}", segment.path().getFileName(), nextOffset);
@@ -156,14 +181,18 @@ public final class FilePartitionLog implements PartitionLogStore {
     try (DirectoryStream<Path> stream =
         Files.newDirectoryStream(partitionDirectory, "*" + SEGMENT_SUFFIX)) {
       for (Path path : stream) {
+        // Opening a segment also counts its records, which recovers that segment's end offset.
         loadedSegments.add(LogSegment.openExisting(path));
       }
     }
+
+    // File systems do not promise directory iteration order, so sort by base offset explicitly.
     loadedSegments.sort(Comparator.comparingLong(LogSegment::baseOffset));
     return loadedSegments;
   }
 
   private LogSegment createSegment(long baseOffset) throws IOException {
+    // The base offset in the filename is the bridge from physical files back to logical offsets.
     Path path = partitionDirectory.resolve(segmentFileName(baseOffset));
     return LogSegment.createNew(path, baseOffset);
   }
@@ -199,6 +228,7 @@ public final class FilePartitionLog implements PartitionLogStore {
     }
 
     static LogSegment createNew(Path path, long baseOffset) throws IOException {
+      // createTopic on an empty partition creates the file; reopening uses openExisting instead.
       if (!Files.exists(path)) {
         Files.createFile(path);
       }
@@ -206,6 +236,7 @@ public final class FilePartitionLog implements PartitionLogStore {
     }
 
     static LogSegment openExisting(Path path) throws IOException {
+      // Both base offset and record count are needed to know the segment's covered offset range.
       long baseOffset = parseBaseOffset(path);
       int recordCount = countRecords(path);
       return new LogSegment(path, baseOffset, recordCount);
@@ -222,8 +253,11 @@ public final class FilePartitionLog implements PartitionLogStore {
       try (DataOutputStream output =
           new DataOutputStream(
               new BufferedOutputStream(Files.newOutputStream(path, StandardOpenOption.APPEND)))) {
+        // Append writes exactly one length-prefixed key/value pair to the tail of the segment file.
         writeRecord(output, key, value);
       }
+
+      // The in-memory count is the segment-local end offset relative to baseOffset.
       recordCount++;
     }
 
@@ -245,6 +279,10 @@ public final class FilePartitionLog implements PartitionLogStore {
               new BufferedInputStream(Files.newInputStream(path, StandardOpenOption.READ)))) {
         long currentOffset = baseOffset;
         while (true) {
+          /*
+           * Reading records advances currentOffset one by one. Until indexes exist, the only way to
+           * skip to a later offset is to scan through earlier records.
+           */
           RecordBytes record = readRecord(input);
           if (currentOffset >= offset && messages.size() < maxMessages) {
             messages.add(new Message(currentOffset, record.key(), record.value()));
@@ -261,6 +299,7 @@ public final class FilePartitionLog implements PartitionLogStore {
     }
 
     long nextOffset() {
+      // Segment end is base offset plus the number of complete records found in this file.
       return baseOffset + recordCount;
     }
 
@@ -277,6 +316,7 @@ public final class FilePartitionLog implements PartitionLogStore {
     }
 
     private static long parseBaseOffset(Path path) {
+      // Segment names are fixed-width decimal offsets plus ".log".
       String fileName = path.getFileName().toString();
       String baseOffsetText = fileName.substring(0, fileName.length() - SEGMENT_SUFFIX.length());
       return Long.parseLong(baseOffsetText);
@@ -306,6 +346,7 @@ public final class FilePartitionLog implements PartitionLogStore {
 
   private static void writeRecord(DataOutputStream output, byte[] key, byte[] value)
       throws IOException {
+    // The record format is just two nullable byte arrays: key first, value second.
     writeNullableBytes(output, key);
     writeNullableBytes(output, value);
   }
@@ -334,9 +375,12 @@ public final class FilePartitionLog implements PartitionLogStore {
 
   private static void writeNullableBytes(DataOutputStream output, byte[] data) throws IOException {
     if (data == null) {
+      // -1 is the sentinel for null; zero is reserved for an empty but present byte array.
       output.writeInt(-1);
       return;
     }
+
+    // Length-prefixing lets reads know exactly how many bytes belong to this field.
     output.writeInt(data.length);
     output.write(data);
   }
@@ -346,6 +390,8 @@ public final class FilePartitionLog implements PartitionLogStore {
     if (length < 0) {
       return null;
     }
+
+    // readFully either fills the whole array or throws EOFException for an incomplete tail record.
     byte[] data = new byte[length];
     input.readFully(data);
     return data;
@@ -354,6 +400,7 @@ public final class FilePartitionLog implements PartitionLogStore {
   private record RecordBytes(byte[] key, byte[] value) {
 
     private RecordBytes {
+      // Defensive copies keep callers from mutating bytes after a record has been read.
       key = key == null ? null : Arrays.copyOf(key, key.length);
       value = value == null ? null : Arrays.copyOf(value, value.length);
     }

@@ -18,21 +18,26 @@ import org.junit.jupiter.api.io.TempDir;
 class FileBackedKafkaBrokerTest {
 
   static {
+    // Debug logs make segment creation and recovery visible when running the lab tests.
     System.setProperty("org.slf4j.simpleLogger.defaultLogLevel", "debug");
     System.setProperty("org.slf4j.simpleLogger.showThreadName", "false");
     System.setProperty("org.slf4j.simpleLogger.showShortLogName", "true");
     System.setProperty("org.slf4j.simpleLogger.showDateTime", "false");
   }
 
+  // JUnit creates a fresh directory for each test, so file-backed tests stay isolated.
   @TempDir Path tempDir;
 
   @Test
   void recordsSurviveBrokerRestart() {
+    // First broker instance writes records to segment files.
     MiniKafkaBroker writer = new FileBackedKafkaBroker(tempDir);
     writer.createTopic("orders", 1);
     writer.append("orders", 0, bytes("order-1"), bytes("created"));
     writer.append("orders", 0, bytes("order-2"), bytes("paid"));
 
+    // Second broker instance has no Java object state from the first one; it must recover from
+    // disk.
     MiniKafkaBroker reader = new FileBackedKafkaBroker(tempDir);
     reader.createTopic("orders", 1);
 
@@ -41,6 +46,8 @@ class FileBackedKafkaBrokerTest {
 
     assertEquals(2, messages.size());
     assertEquals(2L, reader.endOffset("orders", 0));
+
+    // Payload bytes, not just offsets, must survive restart.
     assertArrayEquals(bytes("order-1"), messages.get(0).key());
     assertArrayEquals(bytes("created"), messages.get(0).value());
     assertArrayEquals(bytes("order-2"), messages.get(1).key());
@@ -49,10 +56,12 @@ class FileBackedKafkaBrokerTest {
 
   @Test
   void appendContinuesFromRecoveredEndOffset() {
+    // Write one record and then discard the broker instance.
     MiniKafkaBroker firstBroker = new FileBackedKafkaBroker(tempDir);
     firstBroker.createTopic("orders", 1);
     firstBroker.append("orders", 0, bytes("order-1"), bytes("created"));
 
+    // Recovery should set the next append offset to 1, not start over at 0.
     MiniKafkaBroker restartedBroker = new FileBackedKafkaBroker(tempDir);
     restartedBroker.createTopic("orders", 1);
 
@@ -68,6 +77,7 @@ class FileBackedKafkaBrokerTest {
 
   @Test
   void segmentedLogReadsAcrossMultipleSegments() throws Exception {
+    // Use a tiny segment size so four appends force rollover inside the test.
     Path partitionDirectory = tempDir.resolve("orders").resolve("partition-0");
     FilePartitionLog log = new FilePartitionLog(partitionDirectory, 2);
 
@@ -80,6 +90,8 @@ class FileBackedKafkaBrokerTest {
     try (var stream = Files.list(partitionDirectory)) {
       segmentFiles = stream.sorted().toList();
     }
+
+    // Fetch starts in the first segment and continues into the next segment.
     List<Message> messages = log.readFrom(1, 10);
 
     assertTrue(segmentFiles.size() >= 2);
@@ -90,6 +102,7 @@ class FileBackedKafkaBrokerTest {
   }
 
   private static byte[] bytes(String value) {
+    // The broker stores opaque bytes; strings only make the test data readable.
     return value.getBytes(StandardCharsets.UTF_8);
   }
 }

@@ -1,5 +1,8 @@
 package lab.minikafka.api;
 
+import java.util.List;
+import lab.minikafka.model.TopicPartition;
+
 /**
  * Small broker interface for the first mini-Kafka milestones.
  *
@@ -19,6 +22,14 @@ public interface MiniKafkaBroker {
   void createTopic(String topic, int partitions);
 
   /**
+   * Returns the topic partitions currently registered for {@code topic}.
+   *
+   * <p>The result is ordered by partition number so simple single-node group assignment can be
+   * deterministic.
+   */
+  List<TopicPartition> partitionsFor(String topic);
+
+  /**
    * Appends one record to an existing topic partition.
    *
    * @return the offset assigned to the appended record within that partition
@@ -32,6 +43,29 @@ public interface MiniKafkaBroker {
    * committed offset after processing the returned records.
    */
   FetchResult fetch(String topic, int partition, long offset, int maxMessages);
+
+  /**
+   * Adds one consumer to a single-topic consumer group and returns its current partition
+   * assignment.
+   *
+   * <p>This lab uses a deterministic round-robin assignment over topic partitions. It models the
+   * core ownership idea without implementing Kafka's full rebalance protocol.
+   */
+  List<TopicPartition> joinConsumerGroup(String groupId, String consumerId, String topic);
+
+  /**
+   * Returns the current partition assignment for a group member.
+   *
+   * <p>An unknown or departed member receives an empty assignment.
+   */
+  List<TopicPartition> assignedPartitions(String groupId, String consumerId, String topic);
+
+  /**
+   * Removes one consumer from a single-topic consumer group.
+   *
+   * <p>Remaining members observe the new assignment the next time they ask for it.
+   */
+  void leaveConsumerGroup(String groupId, String consumerId, String topic);
 
   /**
    * Stores a consumer group's progress for one topic partition.

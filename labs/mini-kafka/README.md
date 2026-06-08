@@ -56,7 +56,15 @@ Segmentation solves several practical problems:
 
 Multiple consumers can share one group ID. Conceptually, the group is cooperating to consume a topic together, and the group stores its progress as committed offsets.
 
-This lab only implements the offset tracking part. It does not yet implement partition assignment or rebalance.
+This lab implements the first single-node version of that idea:
+
+- the broker tracks committed offsets per group and topic partition
+- consumers join a group for one topic
+- the broker assigns topic partitions to group members with deterministic round-robin assignment
+- each consumer keeps a local position for its assigned partitions
+- `commitSync` writes the consumer's local positions back as committed group offsets
+
+It does not implement Kafka's full rebalance protocol, durable consumer group offset storage, or multi-topic subscriptions.
 
 ## What this lab is trying to teach
 
@@ -80,15 +88,17 @@ Across those two variants, the lab now covers:
 - append that returns a monotonically increasing partition offset
 - fetch from an offset with a max message count
 - consumer group offset commit and lookup
+- simple consumer group membership and partition assignment
+- a consumer API that polls from local positions and commits progress
 - segmented file-backed append-only partition logs
 - restart recovery of partition end offsets
 - rollover from one segment file to the next
 
 The file-backed broker persists records and reconstructs each partition's end offset from segment
-files. It does not yet persist topic metadata or committed consumer group offsets; tests recreate the
-topic definition before reading recovered records.
+files. It does not yet persist topic metadata, consumer group membership, or committed consumer group
+offsets; tests recreate the topic definition before reading recovered records.
 
-Replication, leader election, rebalancing, retention policies, index files, and network protocols are still out of scope for this phase.
+Replication, leader election, the production rebalance protocol, retention policies, index files, and network protocols are still out of scope for this phase.
 
 ## Mapping this lab to real Kafka
 
@@ -100,10 +110,12 @@ Replication, leader election, rebalancing, retention policies, index files, and 
 | segmented file-backed log | `FilePartitionLog` |
 | record with offset | `Message` |
 | fetch response | `FetchResult` |
+| consumer with local positions | `MiniKafkaConsumer` |
 | shared single-node broker flow | `AbstractSingleNodeKafkaBroker` |
 | committed group offset | `groupOffsets` map inside the abstract broker |
+| group membership and assignment | `groupMembers` map inside the abstract broker |
 
-This lab now has both a pure in-memory model and a minimal persistent segmented model. Real Kafka still goes further by adding indexes, replication, leader election, retention, compaction, network protocols, and consumer group coordination.
+This lab now has both a pure in-memory model and a minimal persistent segmented model. Real Kafka still goes further by adding indexes, replication, leader election, retention, compaction, network protocols, and full consumer group coordination.
 
 ## How to read this lab
 
@@ -114,8 +126,10 @@ If you are new to Kafka, read in this order:
 3. `src/main/java/lab/minikafka/storage/InMemoryPartitionLog.java`: see the append-only log in its simplest form
 4. `src/main/java/lab/minikafka/storage/FilePartitionLog.java`: see how persistence and segmentation change the design
 5. `src/main/java/lab/minikafka/broker/AbstractSingleNodeKafkaBroker.java`: see the shared broker flow
-6. `src/test/java/lab/minikafka/broker/InMemoryKafkaBrokerTest.java`: see the memory behavior
-7. `src/test/java/lab/minikafka/broker/FileBackedKafkaBrokerTest.java`: see restart, rollover, and segmented reads
+6. `src/main/java/lab/minikafka/consumer/MiniKafkaConsumer.java`: see local position tracking and commits
+7. `src/test/java/lab/minikafka/broker/InMemoryKafkaBrokerTest.java`: see the memory behavior
+8. `src/test/java/lab/minikafka/consumer/MiniKafkaConsumerTest.java`: see group assignment and polling
+9. `src/test/java/lab/minikafka/broker/FileBackedKafkaBrokerTest.java`: see restart, rollover, and segmented reads
 
 ## Structure
 
@@ -126,9 +140,13 @@ mini-kafka/
 ├── src/main/java/lab/minikafka/
 │   ├── api/
 │   ├── broker/
+│   ├── consumer/
 │   ├── model/
 │   └── storage/
-└── src/test/java/lab/minikafka/broker/
+└── src/test/java/lab/minikafka/
+    ├── broker/
+    ├── consumer/
+    └── model/
 ```
 
 ## Commands

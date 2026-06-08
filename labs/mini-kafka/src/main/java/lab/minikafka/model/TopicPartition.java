@@ -9,9 +9,12 @@ package lab.minikafka.model;
 public record TopicPartition(String topic, int partition) {
 
   public TopicPartition {
+    // A blank topic cannot be mapped to a directory, API route, or broker metadata key safely.
     if (topic == null || topic.isBlank()) {
       throw new IllegalArgumentException("topic must not be blank");
     }
+
+    // Partition numbers are zero-based, matching Kafka's public API convention.
     if (partition < 0) {
       throw new IllegalArgumentException("partition must be >= 0");
     }

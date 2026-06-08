@@ -25,6 +25,7 @@ public final class FileBackedKafkaBroker extends AbstractSingleNodeKafkaBroker {
   private final Path dataDirectory;
 
   public FileBackedKafkaBroker(Path dataDirectory) {
+    // All topic directories and partition logs are rooted below this broker data directory.
     this.dataDirectory = dataDirectory;
   }
 
@@ -32,6 +33,11 @@ public final class FileBackedKafkaBroker extends AbstractSingleNodeKafkaBroker {
   public void createTopic(String topic, int partitions) {
     validatePartitionCount(partitions);
     LOG.info("Creating disk-backed topic '{}' with {} partitions", topic, partitions);
+
+    /*
+     * The same createTopic call is used for first creation and for restart recovery. If files
+     * already exist, FilePartitionLog opens them and reconstructs end offsets from segment files.
+     */
     for (int partition = 0; partition < partitions; partition++) {
       TopicPartition topicPartition = new TopicPartition(topic, partition);
       createOrRecoverLog(topicPartition);
@@ -41,6 +47,7 @@ public final class FileBackedKafkaBroker extends AbstractSingleNodeKafkaBroker {
 
   private void createOrRecoverLog(TopicPartition topicPartition) {
     try {
+      // The broker registers the recovered log through the same metadata path as a new log.
       registerLog(topicPartition, new FilePartitionLog(pathFor(topicPartition)));
     } catch (IOException exception) {
       throw new IllegalStateException("failed to create log for " + topicPartition, exception);
@@ -48,6 +55,7 @@ public final class FileBackedKafkaBroker extends AbstractSingleNodeKafkaBroker {
   }
 
   private Path pathFor(TopicPartition topicPartition) {
+    // Use stable relative names so the directory layout is easy to inspect in tests.
     return dataDirectory
         .resolve(topicPartition.topic())
         .resolve("partition-" + topicPartition.partition() + ".log");

@@ -14,6 +14,7 @@ class MessageTest {
     byte[] value = bytes("created");
     Message message = new Message(0, key, value);
 
+    // Mutating the original arrays must not mutate the Message.
     key[0] = 'x';
     value[0] = 'y';
 
@@ -21,6 +22,8 @@ class MessageTest {
     assertArrayEquals(bytes("created"), message.value());
 
     byte[] returnedKey = message.key();
+
+    // Mutating an accessor result must not mutate the Message either.
     returnedKey[0] = 'z';
 
     assertArrayEquals(bytes("order-1"), message.key());
@@ -28,6 +31,7 @@ class MessageTest {
 
   @Test
   void comparesPayloadsByContent() {
+    // byte[] normally compares by reference, so Message implements content-based equality.
     Message message = new Message(1, bytes("order-2"), bytes("paid"));
     Message samePayload = new Message(1, bytes("order-2"), bytes("paid"));
 
@@ -36,6 +40,7 @@ class MessageTest {
   }
 
   private static byte[] bytes(String value) {
+    // Keep test fixtures readable while exercising the byte-array API.
     return value.getBytes(StandardCharsets.UTF_8);
   }
 }

@@ -12,6 +12,7 @@ import lab.minikafka.model.Message;
 public record FetchResult(List<Message> messages, long nextOffset) {
 
   public FetchResult {
+    // Copy the list so callers cannot mutate the broker's fetch result after construction.
     messages = List.copyOf(messages);
   }
 }
