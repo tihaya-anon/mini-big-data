@@ -14,7 +14,7 @@ Each lab should satisfy three rules:
 
 | Lab | What to build | Core concepts |
 | --- | --- | --- |
-| **mini Kafka** | A minimal distributed log with topic partitions, append/read APIs, and simple consumer group assignment plus offset tracking. | append-only log, partition, offset, consumer group, replication, leader election |
+| **mini Kafka** | A staged Kafka-like log that grows from one append-only log into partitioned, persistent, segmented logs with simple consumer group assignment. | append-only log, partition, offset, segment, consumer group, replication, leader election |
 | **mini LSM KV Store** | A local key-value engine with WAL, memtable flush, immutable SSTables, and background compaction. | MemStore, WAL, SSTable/HFile, compaction, Bloom filter, range scan |
 | **mini Spark** | A small batch execution engine that turns transformations into a DAG and executes stages with shuffle boundaries. | DAG, RDD lineage, shuffle, stage split, task scheduler |
 | **mini Flink** | A streaming runtime with operators, event-time handling, checkpoints, and state restore. | streaming operator, state backend, checkpoint barrier, watermark, exactly-once |
@@ -36,6 +36,10 @@ lab-name/
 ```
 
 Use that structure to keep design notes, implementation, and tests separate from the start.
+
+Labs that benefit from step-by-step comparison can add runnable versions under `stages/`. In that
+case, the lab root should act as the overview and build aggregator, while each stage owns its own
+`README.md`, `src/`, and tests.
 
 ## Recommended build order
 

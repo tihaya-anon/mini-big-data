@@ -10,34 +10,44 @@
         <relativePath>../../pom.xml</relativePath>
     </parent>
 
-    <artifactId>mini-kafka</artifactId>
-    <name>mini-kafka</name>
-    <description>Single-node mini Kafka lab</description>
+    <artifactId>mini-kafka-parent</artifactId>
+    <packaging>pom</packaging>
+    <name>mini-kafka-parent</name>
+    <description>Staged mini Kafka lab modules</description>
+
+    <modules>
+        <module>stages/01-append-log</module>
+        <module>stages/02-topic-partitions</module>
+        <module>stages/03-consumer-offsets</module>
+        <module>stages/04-file-backed-log</module>
+        <module>stages/05-segmented-log</module>
+        <module>stages/06-consumer-groups</module>
+    </modules>
 
     <properties>
         <junit.version>5.12.2</junit.version>
         <slf4j.version>2.0.17</slf4j.version>
     </properties>
 
-    <dependencies>
-        <dependency>
-            <groupId>org.slf4j</groupId>
-            <artifactId>slf4j-api</artifactId>
-            <version>${slf4j.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.junit.jupiter</groupId>
-            <artifactId>junit-jupiter</artifactId>
-            <version>${junit.version}</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.slf4j</groupId>
-            <artifactId>slf4j-simple</artifactId>
-            <version>${slf4j.version}</version>
-            <scope>test</scope>
-        </dependency>
-    </dependencies>
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.slf4j</groupId>
+                <artifactId>slf4j-api</artifactId>
+                <version>${slf4j.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.slf4j</groupId>
+                <artifactId>slf4j-simple</artifactId>
+                <version>${slf4j.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.junit.jupiter</groupId>
+                <artifactId>junit-jupiter</artifactId>
+                <version>${junit.version}</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 
     <build>
         <plugins>

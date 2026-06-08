@@ -2,46 +2,48 @@
 
 ## Goal
 
-Understand Kafka from the inside out by starting with the smallest useful model: a partitioned append-only log plus consumer progress tracking.
+Understand Kafka from the inside out by building increasingly capable versions of the same small
+single-node system.
 
-This lab is for readers who may know that Kafka is "a message queue" or "an event streaming system" but do not yet understand the storage model underneath those descriptions.
+The lab is organized as runnable stages. Each stage solves one new pain point and intentionally
+keeps earlier limitations visible.
 
-## First milestone
+## Stage Roadmap
 
-Implement a single-node version before adding replication or leader election.
+| Stage | In scope | Out of scope |
+| --- | --- | --- |
+| `01-append-log` | one in-memory append-only log, offsets, fetch batches | topics, partitions, consumer progress, persistence |
+| `02-topic-partitions` | topic creation, fixed partitions, independent partition offsets | committed offsets, consumer groups, persistence |
+| `03-consumer-offsets` | committed offsets per group and topic partition | group membership, assignment, durable offsets |
+| `04-file-backed-log` | file-backed partition logs, restart end-offset recovery | segment rollover, indexes, durable offsets |
+| `05-segmented-log` | bounded segment files, rollover, reads across segments | indexes, retention, compaction |
+| `06-consumer-groups` | single-topic group membership, deterministic partition assignment, local consumer positions | multi-topic subscriptions, production rebalance protocol, durable group state |
 
-## In scope now
+## Current Latest Stage
 
-- create a topic with a fixed number of partitions
-- append messages to a partition and return offsets
-- fetch messages from a partition starting at an offset
-- track committed offsets per consumer group
-- join consumers to a single-topic group
-- assign partitions across group members with a simple deterministic strategy
-- let consumers poll from local positions and commit progress
-- persist partition logs to disk
-- recover partition end offsets after restart
-- roll to new segment files as the log grows
+`stages/06-consumer-groups` is the latest teaching version. It has both in-memory and segmented
+file-backed broker variants, plus a small consumer API.
 
-## Persistence boundary
+The latest stage covers:
+
+- topic creation with fixed partition count
+- append that returns a monotonically increasing partition offset
+- fetch from an offset with a max message count
+- committed consumer group offset lookup and commit
+- segmented file-backed append-only partition logs
+- restart recovery of partition end offsets
+- single-topic group membership and partition assignment
+- local consumer positions and synchronous offset commit
+
+## Persistence Boundary
 
 The file-backed broker persists record data only. On restart, callers recreate the expected topic
 shape with `createTopic`, and each partition log recovers its end offset by scanning segment files.
 
-Consumer group membership, assignments, and offsets remain in memory for this milestone. Persisting
-them would require a separate offset log and recovery path, which is intentionally left for a later
-coordination-focused phase.
+Consumer group membership, assignments, and offsets remain in memory. Persisting them would require
+a separate offset log and recovery path, similar in spirit to Kafka's `__consumer_offsets` topic.
 
-## Out of scope now
-
-- per-segment index files
-- replication and leader failover
-- production-grade consumer group rebalance protocol
-- multi-topic consumer subscriptions
-- durable consumer group offset storage
-- socket protocol or HTTP API
-
-## Concepts to internalize in this phase
+## Concepts To Internalize
 
 - Kafka is fundamentally a log, not a request-response RPC system.
 - A partition is the unit of ordering.
@@ -51,7 +53,15 @@ coordination-focused phase.
 - Persistence changes implementation details, but not the append/fetch contract.
 - Segments make an ever-growing log operationally manageable.
 
-## Next milestone
+## Repository Shape
+
+The lab root is a Maven aggregator. Every stage is an independent Maven module under
+`labs/mini-kafka/stages/`.
+
+This is a teaching choice: code is repeated so each stage stays readable, runnable, and directly
+comparable to the next stage.
+
+## Next Stage
 
 Add per-segment indexes so fetch no longer depends on scanning segment files sequentially.
 

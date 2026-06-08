@@ -39,6 +39,7 @@ Common commands:
 
 - `mvn verify`
 - `cd labs/mini-kafka && mvn test`
+- `cd labs/mini-kafka && mvn -pl stages/06-consumer-groups test`
 - `cd labs/mini-kafka && mvn package`
 - `cd labs/mini-kafka && mvn fmt:format`
 - `cd labs/mini-kafka && mvn fmt:check`
@@ -48,7 +49,7 @@ Common commands:
 
 | Lab | Focus |
 | --- | --- |
-| `mini-kafka` | Append-only log, partitions, offsets, consumer groups, replication |
+| `mini-kafka` | Staged append-only log, partitions, offsets, segments, consumer groups |
 | `mini-lsm-kv-store` | WAL, memtable, SSTable layout, compaction, range scan |
 | `mini-spark` | DAG execution, shuffle boundaries, stage splitting, task scheduling |
 | `mini-flink` | Streaming operators, state, checkpoints, watermarks, exactly-once |
