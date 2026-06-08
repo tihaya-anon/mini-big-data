@@ -10,6 +10,7 @@ The goal is not to rebuild full production systems. Each lab isolates one system
 .
 ├── .mvn/
 ├── .gitignore
+├── pom.xml
 ├── README.md
 ├── docs/
 │   └── mini-big-data-labs.md
@@ -28,6 +29,8 @@ The goal is not to rebuild full production systems. Each lab isolates one system
 ## Build conventions
 
 - JVM-based labs use Maven.
+- JVM-based labs target Java 21.
+- JVM-based labs inherit shared Maven formatting config from the repository root `pom.xml`.
 - Maven is configured at the repository root in `.mvn/maven.config`.
 - Dependencies are cached in repository-local `.m2/repository`, not in `~/.m2`.
 - `mini-terraform` is the only Go-based lab.
@@ -36,6 +39,8 @@ Common commands:
 
 - `cd labs/mini-kafka && mvn test`
 - `cd labs/mini-kafka && mvn package`
+- `cd labs/mini-kafka && mvn fmt:format`
+- `cd labs/mini-kafka && mvn fmt:check`
 - `cd labs/mini-terraform && go test ./...`
 
 ## Labs

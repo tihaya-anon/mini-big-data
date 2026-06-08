@@ -9,15 +9,15 @@ package lab.minikafka.api;
  */
 public interface MiniKafkaBroker {
 
-    void createTopic(String topic, int partitions);
+  void createTopic(String topic, int partitions);
 
-    long append(String topic, int partition, byte[] key, byte[] value);
+  long append(String topic, int partition, byte[] key, byte[] value);
 
-    FetchResult fetch(String topic, int partition, long offset, int maxMessages);
+  FetchResult fetch(String topic, int partition, long offset, int maxMessages);
 
-    void commitOffset(String groupId, String topic, int partition, long offset);
+  void commitOffset(String groupId, String topic, int partition, long offset);
 
-    long committedOffset(String groupId, String topic, int partition);
+  long committedOffset(String groupId, String topic, int partition);
 
-    long endOffset(String topic, int partition);
+  long endOffset(String topic, int partition);
 }

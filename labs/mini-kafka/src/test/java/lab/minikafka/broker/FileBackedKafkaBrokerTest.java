@@ -17,77 +17,76 @@ import org.junit.jupiter.api.io.TempDir;
 
 class FileBackedKafkaBrokerTest {
 
-    static {
-        System.setProperty("org.slf4j.simpleLogger.defaultLogLevel", "debug");
-        System.setProperty("org.slf4j.simpleLogger.showThreadName", "false");
-        System.setProperty("org.slf4j.simpleLogger.showShortLogName", "true");
-        System.setProperty("org.slf4j.simpleLogger.showDateTime", "false");
-    }
+  static {
+    System.setProperty("org.slf4j.simpleLogger.defaultLogLevel", "debug");
+    System.setProperty("org.slf4j.simpleLogger.showThreadName", "false");
+    System.setProperty("org.slf4j.simpleLogger.showShortLogName", "true");
+    System.setProperty("org.slf4j.simpleLogger.showDateTime", "false");
+  }
 
-    @TempDir
-    Path tempDir;
+  @TempDir Path tempDir;
 
-    @Test
-    void recordsSurviveBrokerRestart() {
-        MiniKafkaBroker writer = new FileBackedKafkaBroker(tempDir);
-        writer.createTopic("orders", 1);
-        writer.append("orders", 0, bytes("order-1"), bytes("created"));
-        writer.append("orders", 0, bytes("order-2"), bytes("paid"));
+  @Test
+  void recordsSurviveBrokerRestart() {
+    MiniKafkaBroker writer = new FileBackedKafkaBroker(tempDir);
+    writer.createTopic("orders", 1);
+    writer.append("orders", 0, bytes("order-1"), bytes("created"));
+    writer.append("orders", 0, bytes("order-2"), bytes("paid"));
 
-        MiniKafkaBroker reader = new FileBackedKafkaBroker(tempDir);
-        reader.createTopic("orders", 1);
+    MiniKafkaBroker reader = new FileBackedKafkaBroker(tempDir);
+    reader.createTopic("orders", 1);
 
-        FetchResult result = reader.fetch("orders", 0, 0, 10);
-        List<Message> messages = result.messages();
+    FetchResult result = reader.fetch("orders", 0, 0, 10);
+    List<Message> messages = result.messages();
 
-        assertEquals(2, messages.size());
-        assertEquals(2L, reader.endOffset("orders", 0));
-        assertArrayEquals(bytes("order-1"), messages.get(0).key());
-        assertArrayEquals(bytes("created"), messages.get(0).value());
-        assertArrayEquals(bytes("order-2"), messages.get(1).key());
-        assertArrayEquals(bytes("paid"), messages.get(1).value());
-    }
+    assertEquals(2, messages.size());
+    assertEquals(2L, reader.endOffset("orders", 0));
+    assertArrayEquals(bytes("order-1"), messages.get(0).key());
+    assertArrayEquals(bytes("created"), messages.get(0).value());
+    assertArrayEquals(bytes("order-2"), messages.get(1).key());
+    assertArrayEquals(bytes("paid"), messages.get(1).value());
+  }
 
-    @Test
-    void appendContinuesFromRecoveredEndOffset() {
-        MiniKafkaBroker firstBroker = new FileBackedKafkaBroker(tempDir);
-        firstBroker.createTopic("orders", 1);
-        firstBroker.append("orders", 0, bytes("order-1"), bytes("created"));
+  @Test
+  void appendContinuesFromRecoveredEndOffset() {
+    MiniKafkaBroker firstBroker = new FileBackedKafkaBroker(tempDir);
+    firstBroker.createTopic("orders", 1);
+    firstBroker.append("orders", 0, bytes("order-1"), bytes("created"));
 
-        MiniKafkaBroker restartedBroker = new FileBackedKafkaBroker(tempDir);
-        restartedBroker.createTopic("orders", 1);
+    MiniKafkaBroker restartedBroker = new FileBackedKafkaBroker(tempDir);
+    restartedBroker.createTopic("orders", 1);
 
-        long nextOffset = restartedBroker.append("orders", 0, bytes("order-2"), bytes("paid"));
-        FetchResult result = restartedBroker.fetch("orders", 0, 0, 10);
+    long nextOffset = restartedBroker.append("orders", 0, bytes("order-2"), bytes("paid"));
+    FetchResult result = restartedBroker.fetch("orders", 0, 0, 10);
 
-        assertEquals(1L, nextOffset);
-        assertEquals(2L, restartedBroker.endOffset("orders", 0));
-        assertEquals(2, result.messages().size());
-        assertEquals(1L, result.messages().get(1).offset());
-        assertArrayEquals(bytes("order-2"), result.messages().get(1).key());
-    }
+    assertEquals(1L, nextOffset);
+    assertEquals(2L, restartedBroker.endOffset("orders", 0));
+    assertEquals(2, result.messages().size());
+    assertEquals(1L, result.messages().get(1).offset());
+    assertArrayEquals(bytes("order-2"), result.messages().get(1).key());
+  }
 
-    @Test
-    void segmentedLogReadsAcrossMultipleSegments() throws Exception {
-        Path partitionDirectory = tempDir.resolve("orders").resolve("partition-0");
-        FilePartitionLog log = new FilePartitionLog(partitionDirectory, 2);
+  @Test
+  void segmentedLogReadsAcrossMultipleSegments() throws Exception {
+    Path partitionDirectory = tempDir.resolve("orders").resolve("partition-0");
+    FilePartitionLog log = new FilePartitionLog(partitionDirectory, 2);
 
-        assertEquals(0L, log.append(bytes("order-1"), bytes("created")));
-        assertEquals(1L, log.append(bytes("order-2"), bytes("paid")));
-        assertEquals(2L, log.append(bytes("order-3"), bytes("shipped")));
-        assertEquals(3L, log.append(bytes("order-4"), bytes("delivered")));
+    assertEquals(0L, log.append(bytes("order-1"), bytes("created")));
+    assertEquals(1L, log.append(bytes("order-2"), bytes("paid")));
+    assertEquals(2L, log.append(bytes("order-3"), bytes("shipped")));
+    assertEquals(3L, log.append(bytes("order-4"), bytes("delivered")));
 
-        List<Path> segmentFiles = Files.list(partitionDirectory).sorted().toList();
-        List<Message> messages = log.readFrom(1, 10);
+    List<Path> segmentFiles = Files.list(partitionDirectory).sorted().toList();
+    List<Message> messages = log.readFrom(1, 10);
 
-        assertTrue(segmentFiles.size() >= 2);
-        assertEquals(3, messages.size());
-        assertEquals(1L, messages.get(0).offset());
-        assertEquals(3L, messages.get(2).offset());
-        assertArrayEquals(bytes("order-4"), messages.get(2).key());
-    }
+    assertTrue(segmentFiles.size() >= 2);
+    assertEquals(3, messages.size());
+    assertEquals(1L, messages.get(0).offset());
+    assertEquals(3L, messages.get(2).offset());
+    assertArrayEquals(bytes("order-4"), messages.get(2).key());
+  }
 
-    private static byte[] bytes(String value) {
-        return value.getBytes(StandardCharsets.UTF_8);
-    }
+  private static byte[] bytes(String value) {
+    return value.getBytes(StandardCharsets.UTF_8);
+  }
 }

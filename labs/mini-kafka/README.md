@@ -131,6 +131,8 @@ mini-kafka/
 
 - `cd labs/mini-kafka && mvn test`: compile and run the current tests
 - `cd labs/mini-kafka && mvn package`: build the lab artifact
+- `cd labs/mini-kafka && mvn fmt:format`: apply google-java-format to Java sources
+- `cd labs/mini-kafka && mvn fmt:check`: check Java sources against google-java-format
 
 ## What comes next
 

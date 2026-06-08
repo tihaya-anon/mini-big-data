@@ -3,15 +3,18 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>lab.mini.bigdata</groupId>
+    <parent>
+        <groupId>lab.mini.bigdata</groupId>
+        <artifactId>mini-big-data-parent</artifactId>
+        <version>0.1.0-SNAPSHOT</version>
+        <relativePath>../../pom.xml</relativePath>
+    </parent>
+
     <artifactId>mini-kafka</artifactId>
-    <version>0.1.0-SNAPSHOT</version>
     <name>mini-kafka</name>
     <description>Single-node mini Kafka lab</description>
 
     <properties>
-        <maven.compiler.release>17</maven.compiler.release>
-        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <junit.version>5.12.2</junit.version>
         <slf4j.version>2.0.17</slf4j.version>
     </properties>
