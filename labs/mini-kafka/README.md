@@ -84,6 +84,10 @@ Across those two variants, the lab now covers:
 - restart recovery of partition end offsets
 - rollover from one segment file to the next
 
+The file-backed broker persists records and reconstructs each partition's end offset from segment
+files. It does not yet persist topic metadata or committed consumer group offsets; tests recreate the
+topic definition before reading recovered records.
+
 Replication, leader election, rebalancing, retention policies, index files, and network protocols are still out of scope for this phase.
 
 ## Mapping this lab to real Kafka

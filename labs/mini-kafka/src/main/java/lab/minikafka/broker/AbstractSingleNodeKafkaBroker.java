@@ -12,7 +12,16 @@ import lab.minikafka.storage.PartitionLogStore;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** Shared broker flow for single-node mini-Kafka implementations. */
+/**
+ * Shared broker flow for single-node mini-Kafka implementations.
+ *
+ * <p>The concrete broker chooses how partition logs are created. This base class handles the common
+ * API behavior around lookup, append/fetch delegation, and in-memory consumer group offsets.
+ *
+ * <p>Keeping group offsets here makes an important boundary explicit: even the file-backed broker
+ * in this milestone only persists records. Persisting committed offsets would require another
+ * internal log, similar in spirit to Kafka's {@code __consumer_offsets} topic.
+ */
 abstract class AbstractSingleNodeKafkaBroker implements MiniKafkaBroker {
 
   private static final Logger LOG = LoggerFactory.getLogger(AbstractSingleNodeKafkaBroker.class);

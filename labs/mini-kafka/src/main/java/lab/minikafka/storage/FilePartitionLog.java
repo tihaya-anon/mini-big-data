@@ -19,16 +19,29 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * File-backed append-only log for a single partition.
+ * File-backed append-only log for one topic partition.
  *
- * <p>Unlike the previous single-file version, this implementation stores records in multiple
- * segment files. Segmenting solves a practical problem: a real log grows without bound, so Kafka
- * needs manageable chunks for rollover, recovery, retention, and later indexing.
+ * <p>The first storage milestone, {@link InMemoryPartitionLog}, shows the simplest Kafka idea:
+ * append records and let consumers read by offset. This class keeps the same contract but adds the
+ * next production concern: persistence. Records are written to files, and startup rebuilds the
+ * log's end offset by inspecting those files.
+ *
+ * <p>The log is split into segment files instead of keeping one large file forever. A segment is a
+ * contiguous range of offsets with a base offset encoded in its filename, for example {@code
+ * 00000000000000000042.log}. Segmenting is the foundation for Kafka features such as rollover,
+ * retention, compaction, and sparse indexes. This mini implementation only demonstrates rollover
+ * and recovery; it intentionally leaves indexing, deletion, checksums, and fsync policy for later
+ * labs.
  */
 public final class FilePartitionLog implements PartitionLogStore {
 
   private static final Logger LOG = LoggerFactory.getLogger(FilePartitionLog.class);
   private static final String SEGMENT_SUFFIX = ".log";
+
+  /**
+   * Kept deliberately small so tests and examples can show segment rollover after only a few
+   * appends. A real broker would size segments by bytes and time, not by record count.
+   */
   private static final int DEFAULT_MAX_RECORDS_PER_SEGMENT = 3;
 
   private final Path partitionDirectory;
@@ -40,6 +53,19 @@ public final class FilePartitionLog implements PartitionLogStore {
     this(partitionDirectory, DEFAULT_MAX_RECORDS_PER_SEGMENT);
   }
 
+  /**
+   * Opens or creates a partition log rooted at {@code partitionDirectory}.
+   *
+   * <p>Startup recovery has two steps:
+   *
+   * <ol>
+   *   <li>Load every {@code *.log} segment and sort by base offset.
+   *   <li>Recover the end offset from the last segment's base offset plus its record count.
+   * </ol>
+   *
+   * <p>This is intentionally simpler than Kafka. Kafka also stores indexes and validates record
+   * batches. Here, scanning each segment keeps the persistence format visible for students.
+   */
   public FilePartitionLog(Path partitionDirectory, int maxRecordsPerSegment) throws IOException {
     if (maxRecordsPerSegment <= 0) {
       throw new IllegalArgumentException("maxRecordsPerSegment must be > 0");
@@ -85,6 +111,11 @@ public final class FilePartitionLog implements PartitionLogStore {
       return List.of();
     }
 
+    /*
+     * Offsets are global to the partition, not local to a file. Each segment decides whether it can
+     * contribute records for the requested offset range, then the outer log stops once the requested
+     * batch size is satisfied.
+     */
     List<Message> messages = new ArrayList<>();
     for (LogSegment segment : segments) {
       if (segment.nextOffset() <= offset) {
@@ -141,6 +172,20 @@ public final class FilePartitionLog implements PartitionLogStore {
     return String.format("%020d%s", baseOffset, SEGMENT_SUFFIX);
   }
 
+  /**
+   * One physical segment file inside a partition log.
+   *
+   * <p>This is a private static nested class because a segment is an implementation detail of
+   * {@link FilePartitionLog}: callers should reason about partition offsets, not about segment
+   * files. Keeping it nested also makes the boundary visible: the outer class owns partition-level
+   * ordering and rollover, while this class owns a single file's base offset, record count, append,
+   * and scan behavior.
+   *
+   * <p>The class is {@code static} so it does not capture the outer {@code FilePartitionLog}
+   * instance. That keeps construction explicit and prevents accidental access to partition-level
+   * state such as {@code nextOffset}. If segment behavior grows to include indexes, retention, or
+   * compaction, it should become a package-private top-level class with its own tests.
+   */
   private static final class LogSegment {
 
     private final Path path;
@@ -166,6 +211,13 @@ public final class FilePartitionLog implements PartitionLogStore {
       return new LogSegment(path, baseOffset, recordCount);
     }
 
+    /**
+     * Appends one record to this segment file.
+     *
+     * <p>The offset is deliberately not stored in the record body. The segment's base offset and
+     * the record's position within the file are enough to reconstruct offsets during reads. That
+     * mirrors the log-structured idea: physical order is part of the data model.
+     */
     void append(byte[] key, byte[] value) throws IOException {
       try (DataOutputStream output =
           new DataOutputStream(
@@ -175,6 +227,13 @@ public final class FilePartitionLog implements PartitionLogStore {
       recordCount++;
     }
 
+    /**
+     * Reads records from this segment that are at or after the requested partition offset.
+     *
+     * <p>The method scans from the beginning of the segment because this lab does not have offset
+     * indexes yet. That makes reads O(segment size), which is acceptable for a teaching
+     * implementation and exposes why Kafka keeps index files next to log segment files.
+     */
     List<Message> readFrom(long offset, int maxMessages) throws IOException {
       if (maxMessages <= 0 || offset >= nextOffset()) {
         return List.of();
@@ -223,6 +282,13 @@ public final class FilePartitionLog implements PartitionLogStore {
       return Long.parseLong(baseOffsetText);
     }
 
+    /**
+     * Counts complete records during startup recovery.
+     *
+     * <p>EOF is the normal terminator for this compact binary format. A production log would also
+     * detect torn writes with record batch lengths and checksums; this lab keeps the format small
+     * so the segment mechanics stay readable.
+     */
     private static int countRecords(Path path) throws IOException {
       int count = 0;
       try (DataInputStream input =
@@ -244,6 +310,22 @@ public final class FilePartitionLog implements PartitionLogStore {
     writeNullableBytes(output, value);
   }
 
+  /**
+   * Reads one record from the current stream position.
+   *
+   * <p>The on-disk format is intentionally tiny:
+   *
+   * <ol>
+   *   <li>key length as a 4-byte signed integer, or {@code -1} for a null key
+   *   <li>key bytes, if present
+   *   <li>value length as a 4-byte signed integer, or {@code -1} for a null value
+   *   <li>value bytes, if present
+   * </ol>
+   *
+   * <p>The record has no timestamp, magic byte, checksum, compression flag, or batch header. Those
+   * are real Kafka concerns, but omitting them keeps this lab focused on append-only persistence
+   * and offset recovery.
+   */
   private static RecordBytes readRecord(DataInputStream input) throws IOException {
     byte[] key = readNullableBytes(input);
     byte[] value = readNullableBytes(input);

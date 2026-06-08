@@ -7,7 +7,17 @@ import lab.minikafka.storage.FilePartitionLog;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** Disk-backed broker for the first persistence milestone. */
+/**
+ * Disk-backed broker for the first persistence milestone.
+ *
+ * <p>Each topic partition is stored under the configured data directory as a segmented {@link
+ * FilePartitionLog}. Recreating the broker with the same directory and calling {@link
+ * #createTopic(String, int)} reopens those segment files and recovers the partition end offset.
+ *
+ * <p>Only records are durable in this milestone. Topic definitions are recreated by calling {@code
+ * createTopic}, and consumer group offsets remain in memory in {@link
+ * AbstractSingleNodeKafkaBroker}.
+ */
 public final class FileBackedKafkaBroker extends AbstractSingleNodeKafkaBroker {
 
   private static final Logger LOG = LoggerFactory.getLogger(FileBackedKafkaBroker.class);

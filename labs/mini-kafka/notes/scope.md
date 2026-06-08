@@ -20,11 +20,20 @@ Implement a single-node version before adding replication or leader election.
 - recover partition end offsets after restart
 - roll to new segment files as the log grows
 
+## Persistence boundary
+
+The file-backed broker persists record data only. On restart, callers recreate the expected topic
+shape with `createTopic`, and each partition log recovers its end offset by scanning segment files.
+
+Consumer group offsets remain in memory for this milestone. Persisting them would require a separate
+offset log and recovery path, which is intentionally left for a later coordination-focused phase.
+
 ## Out of scope now
 
 - per-segment index files
 - replication and leader failover
 - consumer group rebalance
+- durable consumer group offset storage
 - socket protocol or HTTP API
 
 ## Concepts to internalize in this phase
