@@ -37,6 +37,7 @@ The goal is not to rebuild full production systems. Each lab isolates one system
 
 Common commands:
 
+- `mvn verify`
 - `cd labs/mini-kafka && mvn test`
 - `cd labs/mini-kafka && mvn package`
 - `cd labs/mini-kafka && mvn fmt:format`

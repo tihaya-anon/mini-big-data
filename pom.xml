@@ -11,6 +11,10 @@
     <name>mini-big-data-parent</name>
     <description>Shared Maven parent for JVM-based mini big data labs</description>
 
+    <modules>
+        <module>labs/mini-kafka</module>
+    </modules>
+
     <properties>
         <maven.compiler.release>21</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>

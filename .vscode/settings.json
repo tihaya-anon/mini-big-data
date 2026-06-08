@@ -6,5 +6,15 @@
         "**/.DS_Store": true,
         "**/Thumbs.db": true
     },
-    "hide-files.files": []
+    "hide-files.files": [],
+    "java.jdt.ls.java.home": "/home/yxluo/.sdkman/candidates/java/current",
+    "java.configuration.runtimes": [
+        {
+            "name": "JavaSE-21",
+            "path": "/home/yxluo/.sdkman/candidates/java/current",
+            "default": true
+        }
+    ],
+    "java.import.maven.enabled": true,
+    "java.configuration.updateBuildConfiguration": "automatic"
 }
