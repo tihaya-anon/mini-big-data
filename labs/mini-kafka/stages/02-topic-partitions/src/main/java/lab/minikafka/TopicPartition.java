@@ -3,10 +3,10 @@ package lab.minikafka;
 import java.util.Objects;
 
 /**
- * Identifies one ordered log inside Kafka.
+ * Identifies one ordered log inside a topic.
  *
- * <p>Topics are split into partitions because Kafka scales by having multiple independent logs
- * rather than one globally ordered stream.
+ * <p>Kafka ordering is scoped to a topic partition, not to the whole topic. Keeping this as one
+ * value object makes that boundary explicit in maps and tests.
  */
 public final class TopicPartition {
 

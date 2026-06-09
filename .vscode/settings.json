@@ -7,11 +7,11 @@
         "**/Thumbs.db": true
     },
     "hide-files.files": [],
-    "java.jdt.ls.java.home": "/home/yxluo/.sdkman/candidates/java/current",
+    "java.jdt.ls.java.home": "~/.sdkman/candidates/java/current",
     "java.configuration.runtimes": [
         {
             "name": "JavaSE-21",
-            "path": "/home/yxluo/.sdkman/candidates/java/current",
+            "path": "~/.sdkman/candidates/java/current",
             "default": true
         }
     ],

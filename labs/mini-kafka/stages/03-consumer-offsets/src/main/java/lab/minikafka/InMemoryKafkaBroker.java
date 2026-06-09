@@ -14,6 +14,11 @@ import java.util.concurrent.ConcurrentHashMap;
 public final class InMemoryKafkaBroker {
 
   private final Map<TopicPartition, PartitionLog> logs = new ConcurrentHashMap<>();
+
+  /*
+   * Offsets are grouped first by consumer group, then by topic partition. This lets two groups read
+   * the same physical log at different speeds without changing the stored messages.
+   */
   private final Map<String, Map<TopicPartition, Long>> groupOffsets = new ConcurrentHashMap<>();
 
   public void createTopic(String topic, int partitions) {
@@ -57,6 +62,11 @@ public final class InMemoryKafkaBroker {
 
     TopicPartition topicPartition = new TopicPartition(topic, partition);
     ensureExists(topicPartition);
+
+    /*
+     * The committed value is the next offset to read, not the last processed record's offset. After
+     * processing records 0 and 1, the group commits 2.
+     */
     groupOffsets
         .computeIfAbsent(groupId, ignored -> new ConcurrentHashMap<>())
         .put(topicPartition, offset);
@@ -69,6 +79,8 @@ public final class InMemoryKafkaBroker {
 
     TopicPartition topicPartition = new TopicPartition(topic, partition);
     ensureExists(topicPartition);
+
+    // A group that has never committed starts from the beginning in this teaching model.
     return groupOffsets.getOrDefault(groupId, Map.of()).getOrDefault(topicPartition, 0L);
   }
 

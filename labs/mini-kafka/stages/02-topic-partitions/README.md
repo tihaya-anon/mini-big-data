@@ -4,8 +4,7 @@ Add named topics and fixed partitions around the append-only log.
 
 ## Pain point
 
-One log is easy to understand, but it cannot model Kafka's scale and ordering boundary. Kafka needs
-many independent logs under a topic so producers and consumers can work in parallel.
+One log is easy to understand, but it cannot model Kafka's scale and ordering boundary. Kafka needs many independent logs under a topic so producers and consumers can work in parallel.
 
 ## What this stage adds
 
@@ -20,7 +19,12 @@ many independent logs under a topic so producers and consumers can work in paral
 - consumer groups
 - disk persistence
 
+## Read the code
+
+- `src/main/java/lab/minikafka/InMemoryKafkaBroker.java`: topic creation and partition lookup
+- `src/main/java/lab/minikafka/TopicPartition.java`: the identity boundary for ordered logs
+- `src/test/java/lab/minikafka/InMemoryKafkaBrokerTest.java`: independent offsets per partition
+
 ## Commands
 
 - `cd labs/mini-kafka/stages/02-topic-partitions && mvn test`
-

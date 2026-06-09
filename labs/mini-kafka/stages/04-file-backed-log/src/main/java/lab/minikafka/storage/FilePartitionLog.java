@@ -60,6 +60,10 @@ public final class FilePartitionLog implements PartitionLogStore {
     }
 
     List<Message> messages = new ArrayList<>();
+    /*
+     * This stage has no index, so reading offset N means scanning from the beginning and counting
+     * records. Stage 05 changes file layout, but indexing is still intentionally left for later.
+     */
     try (DataInputStream input =
         new DataInputStream(
             new BufferedInputStream(Files.newInputStream(logFile, StandardOpenOption.READ)))) {
@@ -93,6 +97,10 @@ public final class FilePartitionLog implements PartitionLogStore {
 
   private long countRecords() throws IOException {
     long count = 0;
+    /*
+     * Recovery is intentionally simple: replay the file shape and count complete records. A real
+     * broker also needs checksums and truncation rules for partial tail writes.
+     */
     try (DataInputStream input =
         new DataInputStream(
             new BufferedInputStream(Files.newInputStream(logFile, StandardOpenOption.READ)))) {
@@ -118,6 +126,7 @@ public final class FilePartitionLog implements PartitionLogStore {
   }
 
   private static void writeNullableBytes(DataOutputStream output, byte[] data) throws IOException {
+    // -1 is a tiny nullable marker; non-null values are length-prefixed bytes.
     if (data == null) {
       output.writeInt(-1);
       return;

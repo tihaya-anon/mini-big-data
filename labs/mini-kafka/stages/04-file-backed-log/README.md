@@ -22,7 +22,13 @@ implementation.
 - durable consumer group offsets
 - consumer group membership
 
+## Read the code
+
+- `src/main/java/lab/minikafka/storage/PartitionLogStore.java`: storage abstraction boundary
+- `src/main/java/lab/minikafka/storage/FilePartitionLog.java`: file format and restart recovery
+- `src/main/java/lab/minikafka/broker/AbstractSingleNodeKafkaBroker.java`: shared broker flow
+- `src/test/java/lab/minikafka/broker/FileBackedKafkaBrokerTest.java`: persistence behavior
+
 ## Commands
 
 - `cd labs/mini-kafka/stages/04-file-backed-log && mvn test`
-

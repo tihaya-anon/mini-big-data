@@ -29,10 +29,20 @@ public final class FilePartitionLog implements PartitionLogStore {
 
   private static final Logger LOG = LoggerFactory.getLogger(FilePartitionLog.class);
   private static final String SEGMENT_SUFFIX = ".log";
+
+  /*
+   * This low default makes rollover visible in tests. Real Kafka rolls by byte size and time, not
+   * by a tiny record count.
+   */
   private static final int DEFAULT_MAX_RECORDS_PER_SEGMENT = 3;
 
   private final Path partitionDirectory;
   private final int maxRecordsPerSegment;
+
+  /*
+   * Segments are kept sorted by base offset. That lets readFrom skip whole files whose offset range
+   * ends before the requested offset.
+   */
   private final List<LogSegment> segments;
   private long nextOffset;
 
@@ -65,6 +75,7 @@ public final class FilePartitionLog implements PartitionLogStore {
   public synchronized long append(byte[] key, byte[] value) throws IOException {
     LogSegment activeSegment = activeSegment();
     if (activeSegment.recordCount() >= maxRecordsPerSegment) {
+      // Rollover keeps new writes append-only while bounding each physical file.
       activeSegment = rollSegment();
     }
 
@@ -87,6 +98,7 @@ public final class FilePartitionLog implements PartitionLogStore {
 
     List<Message> messages = new ArrayList<>();
     for (LogSegment segment : segments) {
+      // Skip segments whose entire offset range is before the requested start.
       if (segment.nextOffset() <= offset) {
         continue;
       }
@@ -114,6 +126,10 @@ public final class FilePartitionLog implements PartitionLogStore {
   }
 
   private LogSegment rollSegment() throws IOException {
+    /*
+     * The segment's base offset is the first logical offset it may contain. The file name carries
+     * that base offset so recovery can rebuild segment order without a separate metadata file.
+     */
     LogSegment segment = createSegment(nextOffset);
     segments.add(segment);
     LOG.info("Rolled new segment {} at base offset {}", segment.path().getFileName(), nextOffset);
@@ -128,6 +144,7 @@ public final class FilePartitionLog implements PartitionLogStore {
         loadedSegments.add(LogSegment.openExisting(path));
       }
     }
+    // File-system iteration order is not stable, so sort before using the segment list.
     loadedSegments.sort(Comparator.comparingLong(LogSegment::baseOffset));
     return loadedSegments;
   }
@@ -143,6 +160,10 @@ public final class FilePartitionLog implements PartitionLogStore {
 
   private static final class LogSegment {
 
+    /*
+     * A segment is a closed-over range starting at baseOffset. In this stage the active segment and
+     * closed segments share the same type; later stages may separate those roles.
+     */
     private final Path path;
     private final long baseOffset;
     private int recordCount;
@@ -181,6 +202,10 @@ public final class FilePartitionLog implements PartitionLogStore {
       }
 
       List<Message> messages = new ArrayList<>();
+      /*
+       * There is still no per-segment index. The segment knows its base offset, but it scans within
+       * the file to find the requested logical offset.
+       */
       try (DataInputStream input =
           new DataInputStream(
               new BufferedInputStream(Files.newInputStream(path, StandardOpenOption.READ)))) {
@@ -225,6 +250,7 @@ public final class FilePartitionLog implements PartitionLogStore {
 
     private static int countRecords(Path path) throws IOException {
       int count = 0;
+      // Restart recovery counts complete records in each segment to reconstruct nextOffset.
       try (DataInputStream input =
           new DataInputStream(
               new BufferedInputStream(Files.newInputStream(path, StandardOpenOption.READ)))) {

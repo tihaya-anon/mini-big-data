@@ -21,7 +21,12 @@ position. There are no topics, partitions, consumer groups, persistence, or netw
 - consumer progress tracking
 - disk persistence
 
+## Read the code
+
+- `src/main/java/lab/minikafka/PartitionLog.java`: append, fetch, and end-offset behavior
+- `src/main/java/lab/minikafka/Message.java`: immutable record payload with an offset
+- `src/test/java/lab/minikafka/PartitionLogTest.java`: the smallest behavior contract
+
 ## Commands
 
 - `cd labs/mini-kafka/stages/01-append-log && mvn test`
-

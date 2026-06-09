@@ -22,7 +22,13 @@ without reading the same partition at the same time.
 - durable group membership and committed offsets
 - replication and leader election
 
+## Read the code
+
+- `src/main/java/lab/minikafka/broker/AbstractSingleNodeKafkaBroker.java`: group membership and assignment
+- `src/main/java/lab/minikafka/consumer/MiniKafkaConsumer.java`: local position and commit behavior
+- `src/main/java/lab/minikafka/storage/FilePartitionLog.java`: latest segmented storage model
+- `src/test/java/lab/minikafka/consumer/MiniKafkaConsumerTest.java`: group assignment and polling
+
 ## Commands
 
 - `cd labs/mini-kafka/stages/06-consumer-groups && mvn test`
-

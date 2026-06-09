@@ -19,7 +19,11 @@ processed up to. A restart or handoff needs a committed position to resume from.
 - partition assignment across group members
 - disk persistence
 
+## Read the code
+
+- `src/main/java/lab/minikafka/InMemoryKafkaBroker.java`: `groupOffsets` and committed offset rules
+- `src/test/java/lab/minikafka/InMemoryKafkaBrokerTest.java`: separate progress for two groups
+
 ## Commands
 
 - `cd labs/mini-kafka/stages/03-consumer-offsets && mvn test`
-

@@ -21,7 +21,11 @@ logs into segment files so old ranges can be managed independently.
 - durable consumer group offsets
 - consumer group membership
 
+## Read the code
+
+- `src/main/java/lab/minikafka/storage/FilePartitionLog.java`: segment loading, rollover, and reads
+- `src/test/java/lab/minikafka/broker/FileBackedKafkaBrokerTest.java`: rollover across files
+
 ## Commands
 
 - `cd labs/mini-kafka/stages/05-segmented-log && mvn test`
-
