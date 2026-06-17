@@ -83,6 +83,12 @@ Read one stage at a time:
 This structure intentionally repeats code across stages. The repetition keeps each version runnable
 and lets you compare before and after states without checking out git history.
 
+## Learning Check
+
+Use `labs/mini-kafka/exercises/source-reading-report.md` as a source-reading report template after
+working through the stages. Check your answers with
+`labs/mini-kafka/exercises/reference-answers.md`.
+
 ## Structure
 
 ```text
